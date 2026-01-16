@@ -1,0 +1,12 @@
+image: gitpod/workspace-node
+
+tasks:
+  - init: npm install
+    command: npm run dev -- --host 0.0.0.0 --port ${PORT:-5173}
+
+ports:
+  - port: 5173
+    onOpen: open-preview
+    visibility: public
+
+# Notes: Uses default Node workspace image, installs dependencies, and starts Vite dev server binding to 0.0.0.0 and the Gitpod-provided $PORT (or 5173 fallback).
