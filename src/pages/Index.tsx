@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
+import { LoadingScreen } from '@/components/loading/LoadingScreen';
 import { MarketOverview } from '@/components/market/MarketOverview';
 import { CoinTable } from '@/components/market/CoinTable';
 import { TradePanel } from '@/components/trade/TradePanel';
@@ -22,11 +22,14 @@ import { useClickSound } from '@/hooks/useClickSound';
 import { Coin } from '@/types/crypto';
 
 const USERNAME = 'shadowHimel';
+const MIN_LOADING_TIME = 1500; // Minimum loading time in ms to appreciate the animation
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('markets');
   const [selectedCoin, setSelectedCoin] = useState<Coin | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [showLoading, setShowLoading] = useState(true);
+  const [loadingStartTime] = useState(Date.now());
   
   // Initialize click sound
   useClickSound();
@@ -45,6 +48,20 @@ const Index = () => {
   const executeTrade = useExecuteTrade();
   const createAlert = useCreatePriceAlert();
   const deleteAlert = useDeletePriceAlert();
+
+  // Handle loading with minimum display time
+  useEffect(() => {
+    if (!coinsLoading && !userLoading) {
+      const elapsed = Date.now() - loadingStartTime;
+      const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsed);
+      
+      const timer = setTimeout(() => {
+        setShowLoading(false);
+      }, remainingTime);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [coinsLoading, userLoading, loadingStartTime]);
 
   // Calculate total balance
   const totalBalance = useMemo(() => {
@@ -76,15 +93,8 @@ const Index = () => {
     await deleteAlert.mutateAsync(alertId);
   };
 
-  if (coinsLoading || userLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <Loader2 className="mx-auto h-12 w-12 animate-spin text-amber-500" />
-          <p className="mt-4 text-muted-foreground">Loading CryptoSim...</p>
-        </div>
-      </div>
-    );
+  if (showLoading || coinsLoading || userLoading) {
+    return <LoadingScreen />;
   }
 
   if (!user) {

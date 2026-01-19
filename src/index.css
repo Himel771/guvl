@@ -39,19 +39,12 @@ All colors MUST be HSL.
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -101,5 +94,59 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Logo Animations */
+@layer utilities {
+  @keyframes logo-pulse {
+    0%, 100% {
+      filter: drop-shadow(0 0 8px hsl(38, 92%, 50%, 0.4));
+    }
+    50% {
+      filter: drop-shadow(0 0 20px hsl(38, 92%, 50%, 0.7));
+    }
+  }
+
+  @keyframes logo-fade-in {
+    0% {
+      opacity: 0;
+      transform: scale(0.8) translateY(10px);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .animate-logo-pulse {
+    animation: logo-pulse 2s ease-in-out infinite;
+  }
+
+  .animate-logo-fade-in {
+    animation: logo-fade-in 0.6s ease-out forwards;
+  }
+
+  .animate-logo-fade-in-delayed {
+    opacity: 0;
+    animation: logo-fade-in 0.6s ease-out 0.3s forwards;
+  }
+
+  .animate-logo-fade-in-more-delayed {
+    opacity: 0;
+    animation: logo-fade-in 0.6s ease-out 0.6s forwards;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s ease-in-out infinite;
   }
 }
