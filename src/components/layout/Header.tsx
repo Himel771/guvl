@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
+import { ShadowExchangeLogo } from '@/components/logo/ShadowExchangeLogo';
 
 interface HeaderProps {
   username: string;
@@ -31,10 +32,11 @@ export const Header = ({ username, totalBalance, activeTab, onTabChange, alertCo
       <div className="container flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500">
-            <span className="text-lg font-bold text-black">₿</span>
-          </div>
-          <span className="text-xl font-bold tracking-tight">CryptoSim</span>
+          <ShadowExchangeLogo size="sm" />
+          <span className="text-xl font-bold tracking-tight">
+            <span className="bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">Shadow</span>
+            <span className="text-foreground"> Exchange</span>
+          </span>
         </div>
 
         {/* Desktop Nav */}
