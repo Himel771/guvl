@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { MarketOverview } from '@/components/market/MarketOverview';
@@ -7,6 +7,7 @@ import { TradePanel } from '@/components/trade/TradePanel';
 import { Portfolio } from '@/components/portfolio/Portfolio';
 import { TransactionHistory } from '@/components/history/TransactionHistory';
 import { PriceAlerts } from '@/components/alerts/PriceAlerts';
+import { ProfileModal } from '@/components/profile/ProfileModal';
 import { useCoins, useGlobalData } from '@/hooks/useCryptoData';
 import { 
   useUser, 
@@ -17,6 +18,7 @@ import {
   useCreatePriceAlert,
   useDeletePriceAlert,
 } from '@/hooks/useUserData';
+import { useClickSound } from '@/hooks/useClickSound';
 import { Coin } from '@/types/crypto';
 
 const USERNAME = 'shadowHimel';
@@ -24,6 +26,10 @@ const USERNAME = 'shadowHimel';
 const Index = () => {
   const [activeTab, setActiveTab] = useState('markets');
   const [selectedCoin, setSelectedCoin] = useState<Coin | null>(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  
+  // Initialize click sound
+  useClickSound();
 
   // Fetch crypto data
   const { data: coins = [], isLoading: coinsLoading } = useCoins();
@@ -99,6 +105,17 @@ const Index = () => {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         alertCount={activeAlerts.length}
+        onProfileClick={() => setIsProfileOpen(true)}
+      />
+      
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        username={user.username}
+        totalBalance={totalBalance}
+        holdingsCount={balances.filter(b => b.amount > 0).length}
+        transactionsCount={transactions.length}
+        joinDate={user.created_at}
       />
       
       <main className="container px-4 py-6">
