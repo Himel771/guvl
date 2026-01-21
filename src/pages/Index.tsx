@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Header } from '@/components/layout/Header';
 import { LoadingScreen } from '@/components/loading/LoadingScreen';
 import { MarketOverview } from '@/components/market/MarketOverview';
@@ -8,9 +10,10 @@ import { Portfolio } from '@/components/portfolio/Portfolio';
 import { TransactionHistory } from '@/components/history/TransactionHistory';
 import { PriceAlerts } from '@/components/alerts/PriceAlerts';
 import { ProfileModal } from '@/components/profile/ProfileModal';
+import { WatchlistPanel } from '@/components/watchlist/WatchlistPanel';
+import { DepositWithdrawModal } from '@/components/wallet/DepositWithdrawModal';
 import { useCoins, useGlobalData } from '@/hooks/useCryptoData';
 import { 
-  useUser, 
   useBalances, 
   useTransactions, 
   usePriceAlerts,
@@ -18,18 +21,21 @@ import {
   useCreatePriceAlert,
   useDeletePriceAlert,
 } from '@/hooks/useUserData';
+import { useAuth } from '@/contexts/AuthContext';
 import { useClickSound } from '@/hooks/useClickSound';
 import { Coin } from '@/types/crypto';
 
-const USERNAME = 'shadowHimel';
-const MIN_LOADING_TIME = 1500; // Minimum loading time in ms to appreciate the animation
+const MIN_LOADING_TIME = 1500;
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('markets');
   const [selectedCoin, setSelectedCoin] = useState<Coin | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [showLoading, setShowLoading] = useState(true);
   const [loadingStartTime] = useState(Date.now());
+  
+  const { user, profile, isLoading: authLoading } = useAuth();
   
   // Initialize click sound
   useClickSound();
@@ -38,8 +44,7 @@ const Index = () => {
   const { data: coins = [], isLoading: coinsLoading } = useCoins();
   const { data: globalData } = useGlobalData();
 
-  // Fetch user data
-  const { data: user, isLoading: userLoading } = useUser(USERNAME);
+  // Fetch user data using auth user id
   const { data: balances = [] } = useBalances(user?.id);
   const { data: transactions = [] } = useTransactions(user?.id);
   const { data: alerts = [] } = usePriceAlerts(user?.id);
@@ -51,7 +56,7 @@ const Index = () => {
 
   // Handle loading with minimum display time
   useEffect(() => {
-    if (!coinsLoading && !userLoading) {
+    if (!coinsLoading && !authLoading) {
       const elapsed = Date.now() - loadingStartTime;
       const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsed);
       
@@ -61,7 +66,7 @@ const Index = () => {
       
       return () => clearTimeout(timer);
     }
-  }, [coinsLoading, userLoading, loadingStartTime]);
+  }, [coinsLoading, authLoading, loadingStartTime]);
 
   // Calculate total balance
   const totalBalance = useMemo(() => {
@@ -73,6 +78,11 @@ const Index = () => {
       return total + (coin ? balance.amount * coin.current_price : 0);
     }, 0);
   }, [balances, coins]);
+
+  // Get USDT balance for wallet modal
+  const usdtBalance = useMemo(() => {
+    return balances.find(b => b.currency === 'USDT')?.amount || 0;
+  }, [balances]);
 
   const activeAlerts = alerts.filter(a => a.is_active);
 
@@ -93,76 +103,94 @@ const Index = () => {
     await deleteAlert.mutateAsync(alertId);
   };
 
-  if (showLoading || coinsLoading || userLoading) {
-    return <LoadingScreen />;
+  // Redirect to auth if not logged in
+  if (!authLoading && !user) {
+    return <Navigate to="/auth" replace />;
   }
 
-  if (!user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <p className="text-red-500">User not found. Please check the database.</p>
-        </div>
-      </div>
-    );
+  if (showLoading || coinsLoading || authLoading) {
+    return <LoadingScreen />;
   }
 
   return (
     <div className="min-h-screen bg-background">
       <Header 
-        username={user.username}
+        username={profile?.username || 'User'}
         totalBalance={totalBalance}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         alertCount={activeAlerts.length}
         onProfileClick={() => setIsProfileOpen(true)}
+        onWalletClick={() => setIsWalletOpen(true)}
+        coins={coins}
+        onSelectCoin={handleSelectCoin}
       />
       
       <ProfileModal
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
-        username={user.username}
+        username={profile?.username || 'User'}
         totalBalance={totalBalance}
         holdingsCount={balances.filter(b => b.amount > 0).length}
         transactionsCount={transactions.length}
-        joinDate={user.created_at}
+        joinDate={profile?.created_at || new Date().toISOString()}
+      />
+
+      <DepositWithdrawModal
+        isOpen={isWalletOpen}
+        onClose={() => setIsWalletOpen(false)}
+        currentBalance={usdtBalance}
       />
       
       <main className="container px-4 py-6">
-        {activeTab === 'markets' && (
-          <div className="space-y-6">
-            <MarketOverview coins={coins} globalData={globalData} />
-            <CoinTable coins={coins} onSelectCoin={handleSelectCoin} />
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            {activeTab === 'markets' && (
+              <div className="space-y-6">
+                <MarketOverview coins={coins} globalData={globalData} />
+                <CoinTable coins={coins} onSelectCoin={handleSelectCoin} />
+              </div>
+            )}
 
-        {activeTab === 'trade' && (
-          <TradePanel
-            selectedCoin={selectedCoin}
-            coins={coins}
-            balances={balances}
-            userId={user.id}
-            onTrade={handleTrade}
-          />
-        )}
+            {activeTab === 'trade' && user && (
+              <TradePanel
+                selectedCoin={selectedCoin}
+                coins={coins}
+                balances={balances}
+                userId={user.id}
+                onTrade={handleTrade}
+              />
+            )}
 
-        {activeTab === 'portfolio' && (
-          <Portfolio balances={balances} coins={coins} />
-        )}
+            {activeTab === 'portfolio' && (
+              <Portfolio balances={balances} coins={coins} />
+            )}
 
-        {activeTab === 'history' && (
-          <TransactionHistory transactions={transactions} coins={coins} />
-        )}
+            {activeTab === 'history' && (
+              <TransactionHistory transactions={transactions} coins={coins} />
+            )}
 
-        {activeTab === 'alerts' && (
-          <PriceAlerts
-            alerts={alerts}
-            coins={coins}
-            userId={user.id}
-            onCreateAlert={handleCreateAlert}
-            onDeleteAlert={handleDeleteAlert}
-          />
-        )}
+            {activeTab === 'alerts' && user && (
+              <PriceAlerts
+                alerts={alerts}
+                coins={coins}
+                userId={user.id}
+                onCreateAlert={handleCreateAlert}
+                onDeleteAlert={handleDeleteAlert}
+              />
+            )}
+
+            {activeTab === 'watchlist' && (
+              <WatchlistPanel coins={coins} onSelectCoin={handleSelectCoin} />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );
