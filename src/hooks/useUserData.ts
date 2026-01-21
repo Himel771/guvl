@@ -1,20 +1,32 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Balance, Transaction, PriceAlert, User } from '@/types/crypto';
+import { Balance, Transaction, PriceAlert } from '@/types/crypto';
 
-export const useUser = (username: string) => {
-  return useQuery<User | null>({
-    queryKey: ['user', username],
+// Profile type (from profiles table)
+export interface Profile {
+  id: string;
+  user_id: string;
+  username: string;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const useProfile = (userId: string | undefined) => {
+  return useQuery<Profile | null>({
+    queryKey: ['profile', userId],
     queryFn: async () => {
+      if (!userId) return null;
       const { data, error } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
-        .eq('username', username)
+        .eq('user_id', userId)
         .single();
       
       if (error) throw error;
-      return data;
+      return data as Profile;
     },
+    enabled: !!userId,
   });
 };
 
