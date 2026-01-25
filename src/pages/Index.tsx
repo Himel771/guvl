@@ -23,6 +23,7 @@ import {
 } from '@/hooks/useUserData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClickSound } from '@/hooks/useClickSound';
+import { RealTimePriceProvider } from '@/contexts/RealTimePriceContext';
 import { Coin } from '@/types/crypto';
 
 const MIN_LOADING_TIME = 1500;
@@ -68,7 +69,7 @@ const Index = () => {
     }
   }, [coinsLoading, authLoading, loadingStartTime]);
 
-  // Calculate total balance
+  // Calculate total balance using real-time prices where available
   const totalBalance = useMemo(() => {
     return balances.reduce((total, balance) => {
       if (balance.currency === 'USDT') {
@@ -83,6 +84,11 @@ const Index = () => {
   const usdtBalance = useMemo(() => {
     return balances.find(b => b.currency === 'USDT')?.amount || 0;
   }, [balances]);
+
+  // Get symbols for real-time price updates
+  const coinSymbols = useMemo(() => {
+    return coins.map(c => c.symbol.toUpperCase());
+  }, [coins]);
 
   const activeAlerts = alerts.filter(a => a.is_active);
 
@@ -113,86 +119,88 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header 
-        username={profile?.username || 'User'}
-        totalBalance={totalBalance}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        alertCount={activeAlerts.length}
-        onProfileClick={() => setIsProfileOpen(true)}
-        onWalletClick={() => setIsWalletOpen(true)}
-        coins={coins}
-        onSelectCoin={handleSelectCoin}
-      />
-      
-      <ProfileModal
-        isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
-        username={profile?.username || 'User'}
-        totalBalance={totalBalance}
-        holdingsCount={balances.filter(b => b.amount > 0).length}
-        transactionsCount={transactions.length}
-        joinDate={profile?.created_at || new Date().toISOString()}
-      />
+    <RealTimePriceProvider symbols={coinSymbols}>
+      <div className="min-h-screen bg-background">
+        <Header 
+          username={profile?.username || 'User'}
+          totalBalance={totalBalance}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          alertCount={activeAlerts.length}
+          onProfileClick={() => setIsProfileOpen(true)}
+          onWalletClick={() => setIsWalletOpen(true)}
+          coins={coins}
+          onSelectCoin={handleSelectCoin}
+        />
+        
+        <ProfileModal
+          isOpen={isProfileOpen}
+          onClose={() => setIsProfileOpen(false)}
+          username={profile?.username || 'User'}
+          totalBalance={totalBalance}
+          holdingsCount={balances.filter(b => b.amount > 0).length}
+          transactionsCount={transactions.length}
+          joinDate={profile?.created_at || new Date().toISOString()}
+        />
 
-      <DepositWithdrawModal
-        isOpen={isWalletOpen}
-        onClose={() => setIsWalletOpen(false)}
-        currentBalance={usdtBalance}
-      />
-      
-      <main className="container px-4 py-6">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            {activeTab === 'markets' && (
-              <div className="space-y-6">
-                <MarketOverview coins={coins} globalData={globalData} />
-                <CoinTable coins={coins} onSelectCoin={handleSelectCoin} />
-              </div>
-            )}
+        <DepositWithdrawModal
+          isOpen={isWalletOpen}
+          onClose={() => setIsWalletOpen(false)}
+          currentBalance={usdtBalance}
+        />
+        
+        <main className="container px-4 py-6">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {activeTab === 'markets' && (
+                <div className="space-y-6">
+                  <MarketOverview coins={coins} globalData={globalData} />
+                  <CoinTable coins={coins} onSelectCoin={handleSelectCoin} />
+                </div>
+              )}
 
-            {activeTab === 'trade' && user && (
-              <TradePanel
-                selectedCoin={selectedCoin}
-                coins={coins}
-                balances={balances}
-                userId={user.id}
-                onTrade={handleTrade}
-              />
-            )}
+              {activeTab === 'trade' && user && (
+                <TradePanel
+                  selectedCoin={selectedCoin}
+                  coins={coins}
+                  balances={balances}
+                  userId={user.id}
+                  onTrade={handleTrade}
+                />
+              )}
 
-            {activeTab === 'portfolio' && (
-              <Portfolio balances={balances} coins={coins} />
-            )}
+              {activeTab === 'portfolio' && (
+                <Portfolio balances={balances} coins={coins} />
+              )}
 
-            {activeTab === 'history' && (
-              <TransactionHistory transactions={transactions} coins={coins} />
-            )}
+              {activeTab === 'history' && (
+                <TransactionHistory transactions={transactions} coins={coins} />
+              )}
 
-            {activeTab === 'alerts' && user && (
-              <PriceAlerts
-                alerts={alerts}
-                coins={coins}
-                userId={user.id}
-                onCreateAlert={handleCreateAlert}
-                onDeleteAlert={handleDeleteAlert}
-              />
-            )}
+              {activeTab === 'alerts' && user && (
+                <PriceAlerts
+                  alerts={alerts}
+                  coins={coins}
+                  userId={user.id}
+                  onCreateAlert={handleCreateAlert}
+                  onDeleteAlert={handleDeleteAlert}
+                />
+              )}
 
-            {activeTab === 'watchlist' && (
-              <WatchlistPanel coins={coins} onSelectCoin={handleSelectCoin} />
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </main>
-    </div>
+              {activeTab === 'watchlist' && (
+                <WatchlistPanel coins={coins} onSelectCoin={handleSelectCoin} />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
+    </RealTimePriceProvider>
   );
 };
 

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ArrowRightLeft, TrendingUp, TrendingDown, Info } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Coin, Balance } from '@/types/crypto';
 import { formatPrice, formatCryptoAmount } from '@/lib/formatters';
 import { PriceChart } from './PriceChart';
+import { useRealTimePrices } from '@/contexts/RealTimePriceContext';
+import { ConnectionStatus } from '@/components/ui/connection-status';
 
 interface TradePanelProps {
   selectedCoin: Coin | null;
@@ -32,12 +35,26 @@ export const TradePanel = ({ selectedCoin, coins, balances, userId, onTrade }: T
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCoinId, setSelectedCoinId] = useState(selectedCoin?.id || 'bitcoin');
+  const [priceFlash, setPriceFlash] = useState<'up' | 'down' | null>(null);
   const { toast } = useToast();
+  const { getEnhancedCoin, isConnected, getPrice } = useRealTimePrices();
 
-  const coin = coins.find(c => c.id === selectedCoinId) || selectedCoin || coins[0];
+  const baseCoin = coins.find(c => c.id === selectedCoinId) || selectedCoin || coins[0];
+  const coin = baseCoin ? getEnhancedCoin(baseCoin) : null;
   
   const usdtBalance = balances.find(b => b.currency === 'USDT')?.amount || 0;
   const coinBalance = balances.find(b => b.currency.toUpperCase() === coin?.symbol.toUpperCase())?.amount || 0;
+
+  // Watch for price changes to trigger flash effect
+  const priceData = coin ? getPrice(coin.symbol) : undefined;
+  
+  useEffect(() => {
+    if (priceData?.direction && priceData.direction !== 'neutral') {
+      setPriceFlash(priceData.direction);
+      const timer = setTimeout(() => setPriceFlash(null), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [priceData?.lastUpdate, priceData?.direction]);
 
   useEffect(() => {
     if (selectedCoin) {
@@ -45,6 +62,7 @@ export const TradePanel = ({ selectedCoin, coins, balances, userId, onTrade }: T
     }
   }, [selectedCoin]);
 
+  // Calculate receive amount using live price
   const calculateReceive = () => {
     if (!amount || !coin) return 0;
     const numAmount = parseFloat(amount);
@@ -118,7 +136,6 @@ export const TradePanel = ({ selectedCoin, coins, balances, userId, onTrade }: T
 
   return (
     <div className="space-y-6">
-      {/* Coin Selector & Price Info */}
       <Card>
         <CardContent className="p-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -139,22 +156,41 @@ export const TradePanel = ({ selectedCoin, coins, balances, userId, onTrade }: T
                 </SelectContent>
               </Select>
               <div>
-                <p className="text-2xl font-bold">{formatPrice(coin.current_price)}</p>
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={coin.current_price}
+                    initial={{ opacity: 0.7, scale: 0.98 }}
+                    animate={{ 
+                      opacity: 1, 
+                      scale: 1,
+                      color: priceFlash === 'up' ? 'rgb(16, 185, 129)' : priceFlash === 'down' ? 'rgb(239, 68, 68)' : undefined
+                    }}
+                    transition={{ duration: 0.3 }}
+                    className={`text-2xl font-bold tabular-nums transition-colors duration-300 ${
+                      priceFlash === 'up' ? 'text-emerald-500' : priceFlash === 'down' ? 'text-red-500' : ''
+                    }`}
+                  >
+                    {formatPrice(coin.current_price)}
+                  </motion.p>
+                </AnimatePresence>
                 <div className={`flex items-center gap-1 text-sm ${coin.price_change_percentage_24h >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                   {coin.price_change_percentage_24h >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                   {Math.abs(coin.price_change_percentage_24h).toFixed(2)}% (24h)
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">24h High</p>
-                <p className="font-medium text-emerald-500">{formatPrice(coin.high_24h)}</p>
+            <div className="flex items-center gap-6">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">24h High</p>
+                  <p className="font-medium text-emerald-500">{formatPrice(coin.high_24h)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">24h Low</p>
+                  <p className="font-medium text-red-500">{formatPrice(coin.low_24h)}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-muted-foreground">24h Low</p>
-                <p className="font-medium text-red-500">{formatPrice(coin.low_24h)}</p>
-              </div>
+              <ConnectionStatus isConnected={isConnected} />
             </div>
           </div>
         </CardContent>
