@@ -13,6 +13,9 @@ import {
 import { Coin } from '@/types/crypto';
 import { formatPrice, formatCurrency, formatPercentage, formatNumber } from '@/lib/formatters';
 import { SparklineChart } from './SparklineChart';
+import { LivePriceCell } from './LivePriceCell';
+import { useRealTimePrices } from '@/contexts/RealTimePriceContext';
+import { ConnectionStatus } from '@/components/ui/connection-status';
 
 interface CoinTableProps {
   coins: Coin[];
@@ -25,7 +28,7 @@ export const CoinTable = ({ coins, onSelectCoin }: CoinTableProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('market_cap_rank');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-
+  const { isConnected, getEnhancedCoin } = useRealTimePrices();
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -35,7 +38,10 @@ export const CoinTable = ({ coins, onSelectCoin }: CoinTableProps) => {
     }
   };
 
-  const filteredCoins = coins
+  // Enhance coins with real-time prices
+  const enhancedCoins = coins.map(getEnhancedCoin);
+
+  const filteredCoins = enhancedCoins
     .filter(
       (coin) =>
         coin.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -50,16 +56,19 @@ export const CoinTable = ({ coins, onSelectCoin }: CoinTableProps) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <Input
-          placeholder="Search coins..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-sm"
-        />
-        <p className="text-sm text-muted-foreground">
-          Showing {filteredCoins.length} of {coins.length} coins
-        </p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Input
+            placeholder="Search coins..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="max-w-sm"
+          />
+          <p className="text-sm text-muted-foreground">
+            Showing {filteredCoins.length} of {coins.length} coins
+          </p>
+        </div>
+        <ConnectionStatus isConnected={isConnected} />
       </div>
 
       <div className="rounded-lg border overflow-hidden">
@@ -110,7 +119,9 @@ export const CoinTable = ({ coins, onSelectCoin }: CoinTableProps) => {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium">{formatPrice(coin.current_price)}</TableCell>
+                  <TableCell>
+                    <LivePriceCell symbol={coin.symbol} fallbackPrice={coin.current_price} />
+                  </TableCell>
                   <TableCell>
                     <div className={`flex items-center gap-1 ${coin.price_change_percentage_24h >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                       {coin.price_change_percentage_24h >= 0 ? (
