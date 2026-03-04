@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/Header';
 import { LoadingScreen } from '@/components/loading/LoadingScreen';
 import { MarketOverview } from '@/components/market/MarketOverview';
 import { CoinTable } from '@/components/market/CoinTable';
+import { WarStocksTable } from '@/components/market/WarStocksTable';
 import { TradePanel } from '@/components/trade/TradePanel';
 import { Portfolio } from '@/components/portfolio/Portfolio';
 import { TransactionHistory } from '@/components/history/TransactionHistory';
@@ -12,6 +13,7 @@ import { PriceAlerts } from '@/components/alerts/PriceAlerts';
 import { ProfileModal } from '@/components/profile/ProfileModal';
 import { WatchlistPanel } from '@/components/watchlist/WatchlistPanel';
 import { DepositWithdrawModal } from '@/components/wallet/DepositWithdrawModal';
+import { Button } from '@/components/ui/button';
 import { useCoins, useGlobalData } from '@/hooks/useCryptoData';
 import { 
   useBalances, 
@@ -30,6 +32,7 @@ const MIN_LOADING_TIME = 1500;
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('markets');
+  const [marketSubTab, setMarketSubTab] = useState<'crypto' | 'warstocks'>('crypto');
   const [selectedCoin, setSelectedCoin] = useState<Coin | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isWalletOpen, setIsWalletOpen] = useState(false);
@@ -38,57 +41,41 @@ const Index = () => {
   
   const { user, profile, isLoading: authLoading } = useAuth();
   
-  // Initialize click sound
   useClickSound();
 
-  // Fetch crypto data
   const { data: coins = [], isLoading: coinsLoading } = useCoins();
   const { data: globalData } = useGlobalData();
 
-  // Fetch user data using auth user id
   const { data: balances = [] } = useBalances(user?.id);
   const { data: transactions = [] } = useTransactions(user?.id);
   const { data: alerts = [] } = usePriceAlerts(user?.id);
 
-  // Mutations
   const executeTrade = useExecuteTrade();
   const createAlert = useCreatePriceAlert();
   const deleteAlert = useDeletePriceAlert();
 
-  // Handle loading with minimum display time
   useEffect(() => {
     if (!coinsLoading && !authLoading) {
       const elapsed = Date.now() - loadingStartTime;
       const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsed);
-      
-      const timer = setTimeout(() => {
-        setShowLoading(false);
-      }, remainingTime);
-      
+      const timer = setTimeout(() => setShowLoading(false), remainingTime);
       return () => clearTimeout(timer);
     }
   }, [coinsLoading, authLoading, loadingStartTime]);
 
-  // Calculate total balance using real-time prices where available
   const totalBalance = useMemo(() => {
     return balances.reduce((total, balance) => {
-      if (balance.currency === 'USDT') {
-        return total + balance.amount;
-      }
+      if (balance.currency === 'USDT') return total + balance.amount;
       const coin = coins.find(c => c.symbol.toUpperCase() === balance.currency.toUpperCase());
       return total + (coin ? balance.amount * coin.current_price : 0);
     }, 0);
   }, [balances, coins]);
 
-  // Get USDT balance for wallet modal
   const usdtBalance = useMemo(() => {
     return balances.find(b => b.currency === 'USDT')?.amount || 0;
   }, [balances]);
 
-  // Get symbols for real-time price updates
-  const coinSymbols = useMemo(() => {
-    return coins.map(c => c.symbol.toUpperCase());
-  }, [coins]);
+  const coinSymbols = useMemo(() => coins.map(c => c.symbol.toUpperCase()), [coins]);
 
   const activeAlerts = alerts.filter(a => a.is_active);
 
@@ -109,7 +96,6 @@ const Index = () => {
     await deleteAlert.mutateAsync(alertId);
   };
 
-  // Redirect to auth if not logged in
   if (!authLoading && !user) {
     return <Navigate to="/auth" replace />;
   }
@@ -141,6 +127,8 @@ const Index = () => {
           holdingsCount={balances.filter(b => b.amount > 0).length}
           transactionsCount={transactions.length}
           joinDate={profile?.created_at || new Date().toISOString()}
+          avatarUrl={profile?.avatar_url || null}
+          userId={user?.id || ''}
         />
 
         <DepositWithdrawModal
@@ -161,7 +149,27 @@ const Index = () => {
               {activeTab === 'markets' && (
                 <div className="space-y-6">
                   <MarketOverview coins={coins} globalData={globalData} />
-                  <CoinTable coins={coins} onSelectCoin={handleSelectCoin} />
+                  <div className="flex gap-2 border-b pb-1">
+                    <Button
+                      variant={marketSubTab === 'crypto' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setMarketSubTab('crypto')}
+                    >
+                      Crypto
+                    </Button>
+                    <Button
+                      variant={marketSubTab === 'warstocks' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setMarketSubTab('warstocks')}
+                    >
+                      War Stocks Private Equity
+                    </Button>
+                  </div>
+                  {marketSubTab === 'crypto' ? (
+                    <CoinTable coins={coins} onSelectCoin={handleSelectCoin} />
+                  ) : (
+                    <WarStocksTable />
+                  )}
                 </div>
               )}
 
