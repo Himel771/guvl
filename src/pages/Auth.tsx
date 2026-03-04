@@ -82,7 +82,7 @@ const Auth = () => {
             <CardDescription>
               {isLogin
                 ? 'Sign in to access your portfolio'
-                : 'Start trading with $1,000 USDT'}
+                : 'Create your trading account'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -189,9 +189,6 @@ const Auth = () => {
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-muted-foreground mt-4">
-          This is a trading simulator. No real money is involved.
-        </p>
       </motion.div>
     </div>
   );
