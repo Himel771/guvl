@@ -37,7 +37,7 @@ export const RealTimePriceProvider = ({ children, symbols }: RealTimePriceProvid
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const reconnectAttemptsRef = useRef(0);
-  const maxReconnectAttempts = 5;
+  const maxReconnectAttempts = 50; // Much higher limit to stay connected
   const previousPricesRef = useRef<Map<string, number>>(new Map());
 
   const connect = useCallback(() => {
@@ -102,22 +102,23 @@ export const RealTimePriceProvider = ({ children, symbols }: RealTimePriceProvid
       }
     };
 
-    ws.onerror = (error) => {
-      console.error('Binance WebSocket error:', error);
-      setIsConnected(false);
+    ws.onerror = () => {
+      // Don't immediately set disconnected on error — onclose will handle reconnect
     };
 
-    ws.onclose = () => {
-      console.log('Binance WebSocket closed');
-      setIsConnected(false);
+    ws.onclose = (event) => {
+      // Don't set disconnected for normal close codes or brief interruptions
+      if (event.code !== 1000) {
+        console.log('Binance WebSocket closed, reconnecting...');
+      }
       
-      // Attempt to reconnect
+      // Always attempt to reconnect
       if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+        const delay = Math.min(1000 * Math.pow(1.5, reconnectAttemptsRef.current), 10000);
         reconnectTimeoutRef.current = setTimeout(() => {
           reconnectAttemptsRef.current++;
-          console.log(`Reconnecting... attempt ${reconnectAttemptsRef.current}`);
           connect();
-        }, Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000));
+        }, delay);
       }
     };
   }, [symbols]);
