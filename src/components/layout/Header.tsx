@@ -20,6 +20,7 @@ interface HeaderProps {
   onWalletClick: () => void;
   coins: Coin[];
   onSelectCoin: (coin: Coin) => void;
+  avatarUrl?: string | null;
 }
 
 export const Header = ({ 
@@ -32,6 +33,7 @@ export const Header = ({
   onWalletClick,
   coins,
   onSelectCoin,
+  avatarUrl,
 }: HeaderProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const { signOut } = useAuth();
@@ -107,8 +109,12 @@ export const Header = ({
               onClick={onProfileClick}
               className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-secondary/50 cursor-pointer"
             >
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                <span className="text-xs font-bold text-black">{username[0].toUpperCase()}</span>
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center overflow-hidden">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-xs font-bold text-black">{username[0].toUpperCase()}</span>
+                )}
               </div>
               <span className="text-sm font-medium hidden lg:inline">{username}</span>
             </button>
@@ -133,8 +139,12 @@ export const Header = ({
                   }}
                   className="flex w-full items-center gap-3 rounded-lg bg-secondary/50 p-3 transition-colors hover:bg-secondary cursor-pointer"
                 >
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                    <span className="text-sm font-bold text-black">{username[0].toUpperCase()}</span>
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center overflow-hidden">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-sm font-bold text-black">{username[0].toUpperCase()}</span>
+                    )}
                   </div>
                   <div className="text-left">
                     <p className="font-medium">{username}</p>
