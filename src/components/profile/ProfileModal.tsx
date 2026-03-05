@@ -39,7 +39,8 @@ export const ProfileModal = ({
 
   const displayAvatarUrl = localAvatarUrl || avatarUrl;
 
-  const formattedDate = new Date(joinDate).toLocaleDateString('en-US', {
+  const memberSinceDate = new Date('2022-10-21');
+  const formattedDate = memberSinceDate.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
